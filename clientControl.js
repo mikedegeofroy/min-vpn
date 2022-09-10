@@ -28,11 +28,11 @@ app.use(express.json())
 
 // The idea is to have a recurring check every 12h for the membership, if it is spoiled, then send a message asking if the person wants to renew their subscription. 
 
-app.listen(443, function(err) {
+app.listen(3001, function(err) {
     if(err){
        console.log(err);
        } else {
-       console.log("Listening on port 443");
+       console.log("Listening on port 3001");
     }
 });
 
