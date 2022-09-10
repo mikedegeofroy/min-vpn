@@ -256,18 +256,15 @@ app.post('/update', async (req, res) => {
 
     let badge = user.value.badge
 
-    // Install script
+    await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
+        caption: `"Payment completed!"`
+    })
 
-    await bot.api.sendMessage(req.body.key, "Payment completed!");
+    // Install script
 
     let file = await addUser();
 
     await bot.api.sendDocument(badge.chat.id, new InputFile(file, "minVPN.conf"));
-
-
-    // await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
-    //     caption: `VPN достаточно часто блокируют в россии. Для этого мы разработали простой бот с VPN сервисом, его на много труднее заблокировать, так как его нет на маректплейсах, на нём мало пользователей, и используются нетрадициональные алгоритмы для VPN тунеля.`, reply_markup: main
-    // })
 
 
 })
