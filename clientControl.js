@@ -36,7 +36,7 @@ app.listen(3001, function(err) {
     }
 });
 
-app.get('/callback', async (req, res) => {
+app.post('/callback', async (req, res) => {
 	console.log(req)
 
 	// let uuid = req.query.uuid
