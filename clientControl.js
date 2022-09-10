@@ -37,56 +37,57 @@ app.listen(3001, function(err) {
 });
 
 app.get('/callback', async (req, res) => {
-	console.log(req.query)
+	console.log(req)
 
-	let uuid = req.query.uuid
+	// let uuid = req.query.uuid
 
-    let url = 'https://api.yookassa.ru/v3/payments';
+    // let url = 'https://api.yookassa.ru/v3/payments';
 
-    let options = {
-        method: 'POST',
-        headers: {
-            'Idempotence-Key': uuid,
-            'Content-Type': 'application/json',
-            Authorization: 'Basic OTM1NzMyOnRlc3RfaTVqSUF0RHlFUGZHSGw5YWVhYmlwb3VyUW5FUkJ1ZndQN2RVd29SdTljdw=='
-        }
-    };
+    // let options = {
+    //     method: 'POST',
+    //     headers: {
+    //         'Idempotence-Key': uuid,
+    //         'Content-Type': 'application/json',
+    //         Authorization: 'Basic OTM1NzMyOnRlc3RfaTVqSUF0RHlFUGZHSGw5YWVhYmlwb3VyUW5FUkJ1ZndQN2RVd29SdTljdw=='
+    //     }
+    // };
 
-    await fetch(url, options)
-        .then(res => res.json())
-        .then((json) => {
-            console.log(json)
-        })
-        .catch(err => console.error('error:' + err));
+    // await fetch(url, options)
+    //     .then(res => res.json())
+    //     .then((json) => {
+    //         console.log(json)
+    //     })
+    //     .catch(err => console.error('error:' + err));
 
-	let payments = mongoose.model("payments", PaymentSchema);
+	// let payments = mongoose.model("payments", PaymentSchema);
 
-	await payments.findOneAndUpdate({ "uuid": uuid }, { status: "completed" }, (err, result) => {
-        if (err) {
-            // console.log(err);
-        } else {
-            // console.log(result);
-        }
-    }).clone()
+	// await payments.findOneAndUpdate({ "uuid": uuid }, { status: "completed" }, (err, result) => {
+    //     if (err) {
+    //         // console.log(err);
+    //     } else {
+    //         // console.log(result);
+    //     }
+    // }).clone()
 
 
-	let url2 = 'http://localhost:3000/update';
+	// let url2 = 'http://localhost:3000/update';
 
 	// Probably interact with mongodb 
 
-	let options2 = {
-		method: 'POST',
-		headers: {'Content-Type': 'application/json'},
-		body: `{"key":${key}, "type":"added"}`
-	};
+	// let options2 = {
+	// 	method: 'POST',
+	// 	headers: {'Content-Type': 'application/json'},
+	// 	body: `{"key":${key}, "type":"added"}`
+	// };
 
-	fetch(url2, options2)
-		.then(res => res.json())
-		.then(json => console.log(json))
-		.catch(err => console.error('error:' + err));
+	// fetch(url2, options2)
+	// 	.then(res => res.json())
+	// 	.then(json => console.log(json))
+	// 	.catch(err => console.error('error:' + err));
 
 	
-	res.redirect('https://t.me/minvpnbot')
+	// res.redirect('https://t.me/minvpnbot')
+    res.send(200)
 })
 
 process.on('uncaughtException', function (err) {
