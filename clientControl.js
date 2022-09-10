@@ -68,7 +68,7 @@ app.post('/callback', async (req, res) => {
         let users = mongoose.model("users", UserSchema);
 
         if(req.body.object.amount.value == '200.00'){
-            let user = await users.findOneAndUpdate({key: key}, { "billing": new Date() }, { upsert: true, new: true }).clone()
+            let user = await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "billing": new Date() }, { upsert: true, new: true }).clone()
 
             let next_billing
 
@@ -79,7 +79,7 @@ app.post('/callback', async (req, res) => {
                 next_billing.setMonth(next_billing.getMonth() + 1);
             }
 
-            await users.findOneAndUpdate({key: key}, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
+            await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
         }
 
 
