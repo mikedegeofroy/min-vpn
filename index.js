@@ -16,8 +16,8 @@ var UserSchema = new mongoose.Schema({
     first_name: { type: String, required: false },
     last_name: { type: String, required: false },
     active: { type: Boolean, required: true }, // this will be either Active / Not Active
-    billing: { type: String, requried: false },
-    next_billing: { type: String, requried: false },
+    billing: { type: Date, requried: false },
+    next_billing: { type: Date, requried: false },
     public_key: { type: String, required: false }
 }, { collection: "users" });
 
@@ -33,7 +33,8 @@ var PaymentSchema = new mongoose.Schema({
     },
     status: { type: String, default: "pending" },
     ammount: { type: Number, required: true },
-    date: { type: Date, required: true }
+    date: { type: Date, required: true },
+    user: { type: String, required: false }
 }, { collection: "payments" });
 
 // Connect to database
@@ -66,7 +67,7 @@ const endpoint = await publicIpv4() + ":" + port
 
 // const endpoint = "192.168.64.2:58468"
 
-async function addUser(){
+async function addUser(key){
     const server = new WgConfig({ filePath })
     await server.parseFile()
 
@@ -97,6 +98,10 @@ async function addUser(){
     
     await server.save()
 
+    let users = mongoose.model("users", UserSchema);
+
+    await users.findOneAndUpdate({key: key}, { "public_key": client.publicKey }, { upsert: true, new: true })
+
     return filePath2
 }
 
@@ -117,8 +122,12 @@ const main = new Menu("home-menu")
     .submenu("Личный кабинет", "settings-menu", async (ctx) => {
         let badge = ctx.session.badge
 
+        let users = mongoose.model("users", UserSchema);
+
+        let user = await users.findOne({key: badge.chat.id})
+
         await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
-            caption: `${badge.chat.first_name}`
+            caption: `Привет ${user.first_name}!\n${user.next_billing ? `Подписка активна до ${user.next_billing.toLocaleDateString("ru-RU", { year: 'numeric', month: 'long', day: 'numeric' })}` : "Вы не активировали подписку."}`
         })
     })
     .submenu("Тарифы", "tarifs-menu").row()
@@ -126,20 +135,35 @@ const main = new Menu("home-menu")
 
 const tarifs = new Menu("tarifs-menu").submenu(
     "Месяц - 250 rub",
-    "payment-menu"
+    "payment-menu",
+    async (ctx) => {
+        ctx.session.ammount = 250
+    }
+).row().submenu(
+    "2 Месяца - 500 rub",
+    "payment-menu",
+    async (ctx) => {
+        ctx.session.ammount = 500
+    }
+).row().submenu(
+    "3 Месяца - 750 rub",
+    "payment-menu",
+    async (ctx) => {
+        ctx.session.ammount = 750
+    }
 ).row().back("Назад")
 
 const payment = new Menu("payment-menu")
     .back("Назад")
     .dynamic(async (ctx) => {
-        console.log("Tarif 1")
+        console.log("Tarif " + ctx.session.ammount)
 
         let badge = ctx.session.badge
 
-        let payment_url = await newPayment(200, badge.chat.id)
+        let payment_url = await newPayment(ctx.session.ammount, badge.chat.id)
 
         await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
-            caption: `К оплате 200 руб`
+            caption: `К оплате ${ctx.session.ammount} руб`
         })
 
         const button = new MenuRange();
@@ -201,7 +225,7 @@ async function newPayment(ammount, uid) {
 
     let payment = mongoose.model("payment", PaymentSchema);
 
-    let mypayment = await payment.create({ ammount: ammount, date: new Date(), status: "pending" })
+    let mypayment = await payment.create({ ammount: ammount, date: new Date(), status: "pending", user: uid })
 
     console.log(mypayment)
 
@@ -214,7 +238,7 @@ async function newPayment(ammount, uid) {
             'Content-Type': 'application/json',
             Authorization: 'Basic OTM1NzMyOnRlc3RfaTVqSUF0RHlFUGZHSGw5YWVhYmlwb3VyUW5FUkJ1ZndQN2RVd29SdTljdw=='
         },
-        body: `{"amount":{"value": ${ammount},"currency":"RUB"},"capture":true,"confirmation":{"type":"redirect","return_url":"http://192.168.64.2:3001/callback?key=${uid}"},"description":"Miau"}`
+        body: `{"amount":{"value": ${ammount},"currency":"RUB"},"capture":true,"confirmation":{"type":"redirect","return_url":"https://t.me/minvpnbot"},"description":"VPN Bot", "metadata":{"key":${uid}}}`
     };
 
     let confirmUrl = ""
@@ -222,6 +246,7 @@ async function newPayment(ammount, uid) {
     await fetch(url, options)
         .then(res => res.json())
         .then((json) => {
+            console.log(json)
             confirmUrl = json.confirmation.confirmation_url
         })
         .catch(err => console.error('error:' + err));
@@ -240,7 +265,7 @@ app.listen(3000, function (err) {
 });
 
 app.post('/update', async (req, res) => {
-    // res.json({ response: "Updated user" })
+    res.json({ response: "Updated user" })
 
     // Ideally I would create and send a file from here, we also need a installation tutorial...
 
@@ -256,13 +281,18 @@ app.post('/update', async (req, res) => {
 
     let badge = user.value.badge
 
-    await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
-        caption: `"Payment completed!"`
-    })
+    await bot.api.sendMessage(badge.chat.id, "Payment completed!")
+
+    setTimeout( async () => {
+        await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
+            caption: `VPN достаточно часто блокируют в россии. Для этого мы разработали простой бот с VPN сервисом, его на много труднее заблокировать, так как его нет на маректплейсах, на нём мало пользователей, и используются нетрадициональные алгоритмы для VPN тунеля.`, reply_markup: main
+        })
+    }, 2000)
+
 
     // Install script
 
-    let file = await addUser();
+    let file = await addUser(user.key);
 
     await bot.api.sendDocument(badge.chat.id, new InputFile(file, "minVPN.conf"));
 

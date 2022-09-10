@@ -67,7 +67,7 @@ app.post('/callback', async (req, res) => {
 
         let users = mongoose.model("users", UserSchema);
 
-        if(req.body.object.amount.value == '200.00'){
+        if(req.body.object.amount.value == '250.00'){
             let user = await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "billing": new Date() }, { upsert: true, new: true }).clone()
 
             let next_billing
@@ -78,6 +78,34 @@ app.post('/callback', async (req, res) => {
             } else {
                 next_billing = new Date()
                 next_billing.setMonth(next_billing.getMonth() + 1);
+            }
+
+            await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
+        } else if(req.body.object.amount.value == '500.00'){
+            let user = await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "billing": new Date() }, { upsert: true, new: true }).clone()
+
+            let next_billing
+
+            if(user.next_billing){
+                next_billing = user.next_billing
+                next_billing.setMonth(next_billing.getMonth() + 2);
+            } else {
+                next_billing = new Date()
+                next_billing.setMonth(next_billing.getMonth() + 2);
+            }
+
+            await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
+        } else if(req.body.object.amount.value == '750.00'){
+            let user = await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "billing": new Date() }, { upsert: true, new: true }).clone()
+
+            let next_billing
+
+            if(user.next_billing){
+                next_billing = user.next_billing
+                next_billing.setMonth(next_billing.getMonth() + 3);
+            } else {
+                next_billing = new Date()
+                next_billing.setMonth(next_billing.getMonth() + 3);
             }
 
             await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
