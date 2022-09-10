@@ -74,6 +74,7 @@ app.post('/callback', async (req, res) => {
 
             if(user.next_billing){
                 next_billing = user.next_billing
+                next_billing.setMonth(next_billing.getMonth() + 1);
             } else {
                 next_billing = new Date()
                 next_billing.setMonth(next_billing.getMonth() + 1);
