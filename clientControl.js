@@ -37,7 +37,7 @@ app.listen(3001, function(err) {
 });
 
 app.post('/callback', async (req, res) => {
-	console.log(req)
+	console.log(req.body)
 
 	// let uuid = req.query.uuid
 
@@ -87,7 +87,7 @@ app.post('/callback', async (req, res) => {
 
 	
 	// res.redirect('https://t.me/minvpnbot')
-    res.send(200)
+    res.sendStatus(status)
 })
 
 process.on('uncaughtException', function (err) {
