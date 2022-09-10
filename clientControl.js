@@ -28,18 +28,36 @@ app.use(express.json())
 
 // The idea is to have a recurring check every 12h for the membership, if it is spoiled, then send a message asking if the person wants to renew their subscription. 
 
-app.listen(3001, function(err) {
+app.listen(443, function(err) {
     if(err){
        console.log(err);
        } else {
-       console.log("Listening on port 3001");
+       console.log("Listening on port 443");
     }
 });
 
 app.get('/callback', async (req, res) => {
 	console.log(req.query)
 
-	const uuid = '592cebe4-45b4-40e0-9f48-f8447b1c102c'
+	let uuid = req.query.uuid
+
+    let url = 'https://api.yookassa.ru/v3/payments';
+
+    let options = {
+        method: 'POST',
+        headers: {
+            'Idempotence-Key': uuid,
+            'Content-Type': 'application/json',
+            Authorization: 'Basic OTM1NzMyOnRlc3RfaTVqSUF0RHlFUGZHSGw5YWVhYmlwb3VyUW5FUkJ1ZndQN2RVd29SdTljdw=='
+        }
+    };
+
+    await fetch(url, options)
+        .then(res => res.json())
+        .then((json) => {
+            console.log(json)
+        })
+        .catch(err => console.error('error:' + err));
 
 	let payments = mongoose.model("payments", PaymentSchema);
 
@@ -52,17 +70,17 @@ app.get('/callback', async (req, res) => {
     }).clone()
 
 
-	let url = 'http://192.168.64.2:3000/update';
+	let url2 = 'http://localhost:3000/update';
 
 	// Probably interact with mongodb 
 
-	let options = {
+	let options2 = {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
-		body: `{"key":${req.query.key}, "type":"added"}`
+		body: `{"key":${key}, "type":"added"}`
 	};
 
-	fetch(url, options)
+	fetch(url2, options2)
 		.then(res => res.json())
 		.then(json => console.log(json))
 		.catch(err => console.error('error:' + err));
