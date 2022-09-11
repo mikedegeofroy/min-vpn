@@ -65,16 +65,16 @@ import { publicIpv4 } from 'public-ip';
 const port = 54210
 const endpoint = await publicIpv4() + ":" + port
 
-// const endpoint = "192.168.64.2:58468"
-
 async function addUser(key){
     const server = new WgConfig({ filePath })
     await server.parseFile()
 
     const filePath2 = path.join(__dirname, '/configs', '/client.conf')
     
+    console.log(server)
+
     const client = new WgConfig({
-        wgInterface: { address: ['10.10.1.2/32'], dns: ['94.140.14.14', '94.140.14.14'] },
+        wgInterface: { address: ['10.10.1.2/32'], dns: ['94.140.14.14', '94.140.15.15'] },
         filePath: filePath2,
     })
     
