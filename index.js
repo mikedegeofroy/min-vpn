@@ -70,11 +70,9 @@ async function addUser(key){
     await server.parseFile()
 
     const filePath2 = path.join(__dirname, '/configs', '/client.conf')
-    
-    console.log(server.peers.length)
 
     const client = new WgConfig({
-        wgInterface: { address: ['10.10.1.2/32'], dns: ['94.140.14.14', '94.140.15.15'] },
+        wgInterface: { address: ['10.10.1.1/32'], dns: ['94.140.14.14', '94.140.15.15'] },
         filePath: filePath2,
     })
     
@@ -84,7 +82,7 @@ async function addUser(key){
     ])
     
     server.addPeer(client.createPeer({
-        allowedIps: ['10.10.1.1/32'],
+        allowedIps: [`10.10.1.${server.peers.length + 1}/32`],
         preSharedKey: server.preSharedKey,
     }))
     
