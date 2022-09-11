@@ -82,7 +82,7 @@ async function addUser(key){
     ])
     
     server.addPeer(client.createPeer({
-        allowedIps: [`10.10.1.${server.peers.length + 1}/32`],
+        allowedIps: [`10.10.1.${server.peers.length + 2}/32`],
         preSharedKey: server.preSharedKey,
     }))
     
