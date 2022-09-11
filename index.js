@@ -72,7 +72,7 @@ async function addUser(key){
     const filePath2 = path.join(__dirname, '/configs', '/client.conf')
 
     const client = new WgConfig({
-        wgInterface: { address: ['10.10.1.1/32'], dns: ['94.140.14.14', '94.140.15.15'] },
+        wgInterface: { address: [`10.10.1.${server.peers.length + 2}/32`], dns: ['94.140.14.14', '94.140.15.15'] },
         filePath: filePath2,
     })
     
