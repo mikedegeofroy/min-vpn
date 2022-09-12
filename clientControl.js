@@ -108,7 +108,7 @@ app.post('/callback', async (req, res) => {
                 next_billing.setMonth(next_billing.getMonth() + 3);
             }
 
-            await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
+            await users.findOneAndUpdate({key: req.body.object.metadata.key}, { "next_billing": next_billing, "active": true }, { upsert: true, new: true }).clone()
         }
 
 
@@ -134,8 +134,32 @@ process.on('uncaughtException', function (err) {
     console.log(err);
 });
 
-setInterval( () => {
+setInterval( async () => {
+
+    let users = mongoose.model("users", UserSchema);
 
     // Look for accounts with due billing
+    let active_users = await users.find({next_billing: { $lt: new Date().toISOString() }, active: true }).clone()
 
-}, 43200000)
+    active_users.forEach( async (user) => {
+
+        await users.findOneAndUpdate({ key: user.key}, { active: false })
+
+        console.log(user)
+
+        let url = 'http://localhost:3000/update';
+    
+        let options = {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: `{"key": ${user.key}, "type":"revoked"}`
+        };
+    
+        fetch(url, options)
+            .then(res => res.json())
+            .then(json => console.log(json))
+            .catch(err => console.error('error:' + err));
+    })
+
+
+}, 12*60*60*1000)

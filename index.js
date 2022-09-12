@@ -105,6 +105,16 @@ async function addUser(key) {
 }
 
 
+async function revokeUser(public_key) {
+    const server = new WgConfig({ filePath })
+
+    await server.parseFile()
+
+    server.removePeer(public_key)
+
+    server.save()
+}
+
 // Define sessions
 
 const sessions = mongoose.connection.collection("users");
@@ -131,8 +141,18 @@ const main = new Menu("home-menu")
         await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
             caption: `Привет ${user.first_name}!\n${user.next_billing ? `Подписка активна до ${user.next_billing.toLocaleDateString("ru-RU", { year: 'numeric', month: 'long', day: 'numeric' })}` : "Вы не активировали подписку."}`
         })
-    })
-    .submenu("Тарифы", "tarifs-menu").row()
+    }).dynamic(async (ctx) => {
+
+        let badge = ctx.session.badge
+
+        let users = mongoose.model("users", UserSchema);
+
+        let user = await users.findOne({ key: badge.chat.id });
+
+        const button = new MenuRange();
+
+        return button.submenu(user.active ? "Продлить" : "Тарифы", "tarifs-menu")
+    }).row()
     .url("Поддержка и Вопросы", "https://t.me/mikedegeofroy");
 
 const tarifs = new Menu("tarifs-menu").submenu(
@@ -280,28 +300,49 @@ app.post('/update', async (req, res) => {
 
     let users = mongoose.model("users", UserSchema);
 
-    let user = await users.findOne(req.body)
+    let user = await users.findOne({ key: req.body.key })
 
     user = user.toObject()
 
     console.log(user)
 
-    let badge = user.value.badge
+    if (req.body.type = "added") {
 
-    await bot.api.sendMessage(badge.chat.id, "Payment completed!")
+        let badge = user.value.badge
 
-    setTimeout(async () => {
-        await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
-            caption: `VPN достаточно часто блокируют в россии. Для этого мы разработали простой бот с VPN сервисом, его на много труднее заблокировать, так как его нет на маректплейсах, на нём мало пользователей, и используются нетрадициональные алгоритмы для VPN тунеля.`, reply_markup: main
-        })
-    }, 2000)
+        await bot.api.sendMessage(badge.chat.id, "Payment completed!")
+
+        setTimeout(async () => {
+            await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
+                caption: `VPN достаточно часто блокируют в россии. Для этого мы разработали простой бот с VPN сервисом, его на много труднее заблокировать, так как его нет на маректплейсах, на нём мало пользователей, и используются нетрадициональные алгоритмы для VPN тунеля.`, reply_markup: main
+            })
+        }, 2000)
+
+        // Install script
+
+        let file = await addUser(user.key);
+
+        await bot.api.sendDocument(badge.chat.id, new InputFile(file, "minVPN.conf"));
+    } else if(req.body.type = "revoked") {
+
+        let badge = user.value.badge
+
+        await bot.api.sendMessage(badge.chat.id, "Ваша подписка закончилась! 😰")
+
+        setTimeout(async () => {
+            await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
+                caption: `VPN достаточно часто блокируют в россии. Для этого мы разработали простой бот с VPN сервисом, его на много труднее заблокировать, так как его нет на маректплейсах, на нём мало пользователей, и используются нетрадициональные алгоритмы для VPN тунеля.`, reply_markup: main
+            })
+        }, 2000)
+
+        // Install script
+
+        // revoke user
+        await revokeUser(user.key);
+    }
 
 
-    // Install script
 
-    let file = await addUser(user.key);
-
-    await bot.api.sendDocument(badge.chat.id, new InputFile(file, "minVPN.conf"));
 
 
 })
@@ -314,18 +355,18 @@ bot.on('::hashtag', async (ctx) => {
 
     let promos = mongoose.model("promos", PromoSchema);
 
-    let code = await promos.findOneAndUpdate({code: ctx.message.text, uses_left: { $gt: 0 }}, { $inc: { uses_left: -1 }})
+    let code = await promos.findOneAndUpdate({ code: ctx.message.text, uses_left: { $gt: 0 } }, { $inc: { uses_left: -1 } })
 
     let users = mongoose.model("users", UserSchema);
 
     if (code) {
         await statusMessage.editText("Подтвержден ✅")
 
-        let user = await users.findOneAndUpdate({key: ctx.chat.id}, { "billing": new Date() }, { upsert: true, new: true }).clone()
+        let user = await users.findOneAndUpdate({ key: ctx.chat.id }, { "billing": new Date() }, { upsert: true, new: true }).clone()
 
         let next_billing
 
-        if(user.next_billing){
+        if (user.next_billing) {
             next_billing = user.next_billing
             next_billing.setMonth(next_billing.getMonth() + 3);
         } else {
@@ -333,7 +374,7 @@ bot.on('::hashtag', async (ctx) => {
             next_billing.setMonth(next_billing.getMonth() + 3);
         }
 
-        await users.findOneAndUpdate({key: ctx.chat.id}, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
+        await users.findOneAndUpdate({ key: ctx.chat.id }, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
 
         await statusMessage.editText(`Активирована подписка до ${user.next_billing.toLocaleDateString("ru-RU", { year: 'numeric', month: 'long', day: 'numeric' })}`)
     } else {
