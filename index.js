@@ -362,9 +362,9 @@ bot.on('::hashtag', async (ctx) => {
     if (code) {
         await statusMessage.editText("Подтвержден ✅")
 
-        let badge = user.value.badge
-
         let user = await users.findOneAndUpdate({ key: ctx.chat.id }, { "billing": new Date() }, { upsert: true, new: true }).clone()
+
+        let badge = user.value.badge
 
         let next_billing
 
