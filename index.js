@@ -364,7 +364,7 @@ bot.on('::hashtag', async (ctx) => {
 
         let user = await users.findOneAndUpdate({ key: ctx.chat.id }, { "billing": new Date() }, { upsert: true, new: true }).clone()
 
-        let badge = user.value.badge
+        let badge = await user.value.badge
 
         let next_billing
 
