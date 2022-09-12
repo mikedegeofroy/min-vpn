@@ -22,7 +22,8 @@ var UserSchema = new mongoose.Schema({
 }, { collection: "users" });
 
 var PromoSchema = new mongoose.Schema({
-    code: { type: String, unique: true }
+    code: { type: String, unique: true },
+    uses_left: { type: Number, default: 1 }
 }, { collection: "promo" });
 
 var PaymentSchema = new mongoose.Schema({
@@ -65,7 +66,7 @@ import { publicIpv4 } from 'public-ip';
 const port = 54210
 const endpoint = await publicIpv4() + ":" + port
 
-async function addUser(key){
+async function addUser(key) {
     const server = new WgConfig({ filePath })
     await server.parseFile()
 
@@ -75,30 +76,30 @@ async function addUser(key){
         wgInterface: { address: [`10.10.1.${server.peers.length + 2}/32`], dns: ['94.140.14.14', '94.140.15.15'] },
         filePath: filePath2,
     })
-    
+
     await Promise.all([
         server.generateKeys({ preSharedKey: true }),
         client.generateKeys()
     ])
-    
+
     server.addPeer(client.createPeer({
         allowedIps: [`10.10.1.${server.peers.length + 2}/32`],
         preSharedKey: server.preSharedKey,
     }))
-    
+
     client.addPeer(server.createPeer({
         allowedIps: ['0.0.0.0/0'],
         preSharedKey: server.preSharedKey,
         endpoint: endpoint
     }))
-    
+
     client.writeToFile()
-    
+
     await server.save()
 
     let users = mongoose.model("users", UserSchema);
 
-    await users.findOneAndUpdate({key: key}, { "public_key": client.publicKey }, { upsert: true, new: true })
+    await users.findOneAndUpdate({ key: key }, { "public_key": client.publicKey }, { upsert: true, new: true })
 
     return filePath2
 }
@@ -110,11 +111,14 @@ const sessions = mongoose.connection.collection("users");
 
 import { Bot, session, InputFile, InlineKeyboard } from "grammy";
 import { Menu, MenuRange } from "@grammyjs/menu";
+import { hydrate } from "@grammyjs/hydrate";
 import { MongoDBAdapter } from "@grammyjs/storage-mongodb";
 
 const bot = new Bot('5709156476:AAGp0CmUQ5PhZMq2AcHAo57CiWCsNzB3R60');
 
 bot.use(session({ initial: () => ({}), storage: new MongoDBAdapter({ collection: sessions }) }));
+
+bot.use(hydrate());
 
 const main = new Menu("home-menu")
     .submenu("Личный кабинет", "settings-menu", async (ctx) => {
@@ -122,7 +126,7 @@ const main = new Menu("home-menu")
 
         let users = mongoose.model("users", UserSchema);
 
-        let user = await users.findOne({key: badge.chat.id})
+        let user = await users.findOne({ key: badge.chat.id })
 
         await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
             caption: `Привет ${user.first_name}!\n${user.next_billing ? `Подписка активна до ${user.next_billing.toLocaleDateString("ru-RU", { year: 'numeric', month: 'long', day: 'numeric' })}` : "Вы не активировали подписку."}`
@@ -169,9 +173,12 @@ const payment = new Menu("payment-menu")
         return button.url("Оплата", payment_url)
     });
 
-const settings = new Menu("settings-menu").text(
-    "Пригласить друга",
+const promo = new Menu("promo-menu").back('Назад')
+
+const settings = new Menu("settings-menu").submenu(
+    "Пригласи друга",
     async (ctx) => {
+
         let tmp = await ctx.reply("Comming soon!")
 
         setTimeout(async () => {
@@ -189,6 +196,8 @@ const settings = new Menu("settings-menu").text(
 main.register(settings);
 
 main.register(tarifs);
+
+settings.register(promo);
 
 tarifs.register(payment)
 
@@ -281,7 +290,7 @@ app.post('/update', async (req, res) => {
 
     await bot.api.sendMessage(badge.chat.id, "Payment completed!")
 
-    setTimeout( async () => {
+    setTimeout(async () => {
         await bot.api.editMessageCaption(badge.chat.id, badge.message_id, {
             caption: `VPN достаточно часто блокируют в россии. Для этого мы разработали простой бот с VPN сервисом, его на много труднее заблокировать, так как его нет на маректплейсах, на нём мало пользователей, и используются нетрадициональные алгоритмы для VPN тунеля.`, reply_markup: main
         })
@@ -295,6 +304,45 @@ app.post('/update', async (req, res) => {
     await bot.api.sendDocument(badge.chat.id, new InputFile(file, "minVPN.conf"));
 
 
+})
+
+bot.on('::hashtag', async (ctx) => {
+
+    let statusMessage = await ctx.reply("Секнундочку...")
+
+    await ctx.deleteMessage()
+
+    let promos = mongoose.model("promos", PromoSchema);
+
+    let code = await promos.findOneAndUpdate({code: ctx.message.text, uses_left: { $gt: 0 }}, { $inc: { uses_left: -1 }})
+
+    let users = mongoose.model("users", UserSchema);
+
+    if (code) {
+        await statusMessage.editText("Подтвержден ✅")
+
+        let user = await users.findOneAndUpdate({key: ctx.chat.id}, { "billing": new Date() }, { upsert: true, new: true }).clone()
+
+        let next_billing
+
+        if(user.next_billing){
+            next_billing = user.next_billing
+            next_billing.setMonth(next_billing.getMonth() + 3);
+        } else {
+            next_billing = new Date()
+            next_billing.setMonth(next_billing.getMonth() + 3);
+        }
+
+        await users.findOneAndUpdate({key: ctx.chat.id}, { "next_billing": next_billing }, { upsert: true, new: true }).clone()
+
+        await statusMessage.editText(`Активирована подписка до ${user.next_billing.toLocaleDateString("ru-RU", { year: 'numeric', month: 'long', day: 'numeric' })}`)
+    } else {
+        await statusMessage.editText("Такого промокода нет ❌")
+    }
+
+    setTimeout(async () => {
+        await ctx.api.deleteMessage(ctx.chat.id, statusMessage.message_id)
+    }, 1200)
 })
 
 // Error catcher, start bot
