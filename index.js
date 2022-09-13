@@ -363,8 +363,8 @@ bot.on('::hashtag', async (ctx) => {
         await statusMessage.editText("Подтвержден ✅")
 
         let user = await users.findOneAndUpdate({ key: ctx.chat.id }, { "billing": new Date() }, { upsert: true, new: true }).clone()
-
-        let badge = await user.value.badge
+        
+        console.log(user)
 
         let next_billing
 
@@ -376,13 +376,16 @@ bot.on('::hashtag', async (ctx) => {
             next_billing.setMonth(next_billing.getMonth() + 3);
         }
 
+
+
         await users.findOneAndUpdate({ key: ctx.chat.id }, { "next_billing": next_billing, active: true }, { upsert: true, new: true }).clone()
+
 
         await statusMessage.editText(`Активирована подписка до ${user.next_billing.toLocaleDateString("ru-RU", { year: 'numeric', month: 'long', day: 'numeric' })}`)
 
         let file = await addUser(user.key);
 
-        await bot.api.sendDocument(badge.chat.id, new InputFile(file, "minVPN.conf"));
+        await bot.api.sendDocument(ctx.chat.id, new InputFile(file, "minVPN.conf"));
     } else {
         await statusMessage.editText("Такого промокода нет ❌")
     }
