@@ -227,8 +227,6 @@ bot.command("start", async (ctx) => {
 
     console.log(ctx.match)
 
-    ctx.deleteMessage()
-
     let users = mongoose.model("users", UserSchema);
 
     await users.findOneAndUpdate({ "key": `${ctx.from.id}` }, { "username": ctx.from.username, "first_name": ctx.from.first_name, "last_name": ctx.from.last_name }, { upsert: true, new: true }, (err, result) => {
@@ -242,7 +240,11 @@ bot.command("start", async (ctx) => {
     ctx.session.badge = await ctx.replyWithPhoto(new InputFile("header.png"), {
 
         caption: `VPN достаточно часто блокируют в россии. Для этого мы разработали простой бот с VPN сервисом, его на много труднее заблокировать, так как его нет на маректплейсах, на нём мало пользователей, и используются нетрадициональные алгоритмы для VPN тунеля.`, reply_markup: main
+    }).then( () => {
+        ctx.deleteMessage()
     })
+
+
 
 });
 
